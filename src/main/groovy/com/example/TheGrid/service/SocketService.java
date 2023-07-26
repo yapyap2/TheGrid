@@ -31,7 +31,7 @@ public class SocketService{
 
         TextMessage socketMessage = new TextMessage(json);
         try {
-            session.sendMessage(socketMessage);
+             session.sendMessage(socketMessage);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

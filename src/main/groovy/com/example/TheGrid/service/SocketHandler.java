@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -20,13 +21,13 @@ public class SocketHandler extends TextWebSocketHandler {
     private final SessionContainer sessionContainer;
     private final ObjectMapper objectMapper;
     private final RedisTemplate redisTemplate;
-
     private final MessageRepository messageRepository;
 
+    private final SubscriberContainer subscriberContainer;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String name = session.getHandshakeHeaders().get("name").get(0);
+        String name = session.getUri().getQuery().split("=")[1];
         sessionContainer.addSession(session, name);
         log.info("new Socket connection established   name : {}", name);
         super.afterConnectionEstablished(session);
@@ -43,5 +44,14 @@ public class SocketHandler extends TextWebSocketHandler {
 
         redisTemplate.convertAndSend(sendRequest.getGrid(), gridMessage);
         log.info("Socket Received Message.   sender : {}", gridMessage.getSender());
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+        String name = session.getUri().getQuery().split("=")[1];
+        sessionContainer.deleteSession(name);
+        subscriberContainer.unsubscribe(name);
+        log.info("Socket Disconnected UserName: {}", name);
+        super.afterConnectionClosed(session, status);
     }
 }
